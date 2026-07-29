@@ -18,7 +18,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build and push GHCR
+      - name: Login Hamdocker
+        uses: docker/login-action@v3
+        with:
+          registry: registry.hamdocker.ir
+          username: ${{ secrets.HAMDOCKER_USERNAME }}
+          password: ${{ secrets.HAMDOCKER_PASSWORD }}
+      - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -26,4 +32,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/mirkhalilimostafa/maahed-ganjeh:latest
-            ghcr.io/mirkhalilimostafa/maahed-ganjeh:${{ github.sha }}
+            registry.hamdocker.ir/maahedir/maahed-ganjeh-tehran:latest
