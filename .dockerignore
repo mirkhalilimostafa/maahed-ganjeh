@@ -17,7 +17,10 @@ uploads/
 *.md
 !README.md
 docs/
-scripts/
+# Keep captcha helpers for the image; ignore the rest of scripts/
+scripts/*
+!scripts/maahed_admin_login.js
+!scripts/ocr_digits.js
 .cursor
 agent-transcripts
 **/terminals
