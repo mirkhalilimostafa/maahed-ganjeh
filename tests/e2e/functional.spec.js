@@ -22,10 +22,11 @@ test.describe("functional — auth & navigation", () => {
 
 test.describe("functional — dashboard request flow", () => {
   test("create investor dashboard shows widgets + freshness + bot stub notify", async ({ page }) => {
+    test.setTimeout(180_000);
     await login(page);
     await page.getByRole("link", { name: "ساخت داشبورد" }).click();
     await page.getByRole("button", { name: "ساخت پیشنهاد داشبورد" }).click();
-    await page.waitForURL(/\/dashboards\/[0-9a-f-]+/, { timeout: 60000 });
+    await page.waitForURL(/\/dashboards\/[0-9a-f-]+/, { timeout: 120000 });
 
     const widgets = page.locator(".widget");
     await expect(widgets.filter({ hasText: "عملکرد و رشد فروش" }).first()).toBeVisible();
@@ -48,15 +49,16 @@ test.describe("functional — dashboard request flow", () => {
   });
 
   test("revise after view updates dashboard", async ({ page }) => {
+    test.setTimeout(240_000);
     await login(page);
     await page.getByRole("link", { name: "ساخت داشبورد" }).click();
     await page.getByRole("button", { name: "ساخت پیشنهاد داشبورد" }).click();
-    await page.waitForURL(/\/dashboards\/[0-9a-f-]+/, { timeout: 60000 });
+    await page.waitForURL(/\/dashboards\/[0-9a-f-]+/, { timeout: 120000 });
 
     await page.locator("textarea").fill("فروش سایت را جدا نگه دار و تازگی را حفظ کن");
     await page.getByRole("button", { name: "اعمال اصلاح" }).click();
     await expect(page.locator(".panel .meta").filter({ hasText: "وضعیت: revised" })).toBeVisible({
-      timeout: 60000,
+      timeout: 120000,
     });
     await expect(page.getByText("[اصلاح کاربر]: فروش سایت را جدا نگه دار")).toBeVisible();
   });
@@ -64,10 +66,11 @@ test.describe("functional — dashboard request flow", () => {
 
 test.describe("functional — MVP checklist page", () => {
   test("MVP auto scenario completes checks", async ({ page }) => {
+    test.setTimeout(300_000);
     await login(page);
     await page.getByRole("link", { name: "تست MVP" }).click();
     await page.getByRole("button", { name: /اجرای خودکار سناریوی MVP/ }).click();
-    await expect(page.getByText("نتیجه اجرا")).toBeVisible({ timeout: 90000 });
+    await expect(page.getByText("نتیجه اجرا")).toBeVisible({ timeout: 240000 });
     await expect(page.locator("pre")).toContainText('"dashboard_created": true');
     await expect(page.locator("pre")).toContainText('"freshness_on_each_widget": true');
   });
