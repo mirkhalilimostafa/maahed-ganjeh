@@ -6,7 +6,11 @@
   "scripts": {
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
-    "test:data": "py -3.12 -m pytest tests/data -q"
+    "test:data": "py -3.12 -m pytest tests/data -q",
+    "ocr:digits": "node scripts/ocr_digits.js"
+  },
+  "dependencies": {
+    "tesseract.js": "^7.0.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.62.0"

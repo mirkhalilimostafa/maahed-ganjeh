@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import json
+import os
 import re
+import subprocess
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
@@ -11,9 +15,10 @@ from app.config import Settings
 
 
 class MaahedSiteConnector:
-    """Session client for maahed.ir admin panel (Yii2 advanced-admin).
+    """maahed.ir admin connector.
 
-    Login URL: /admin-panel/login — requires CSRF (_csrf-admin) and usually captcha.
+    Admin login requires image captcha. Simple HTTP captcha endpoint often 500s,
+    so login+OCR runs via Playwright helper (scripts/maahed_admin_login.js).
     """
 
     def __init__(self, settings: Settings) -> None:
@@ -24,7 +29,6 @@ class MaahedSiteConnector:
         self.login_url = urljoin(self.base + "/", path.lstrip("/"))
         self.username = settings.maahed_site_username.strip()
         self.password = settings.maahed_site_password.strip()
-        self.captcha = settings.maahed_site_captcha.strip()
 
     async def status(self) -> dict[str, Any]:
         checked_at = datetime.now(timezone.utc).isoformat()
@@ -34,78 +38,41 @@ class MaahedSiteConnector:
                 "ok": False,
                 "configured": False,
                 "freshness_label": "داده فروش سایت: credential تنظیم نشده",
-                "detail": "MAAHED_SITE_USERNAME / MAAHED_SITE_PASSWORD را در env بگذارید (لاگین: /admin-panel/login)",
+                "detail": "MAAHED_SITE_USERNAME / MAAHED_SITE_PASSWORD را در env بگذارید",
                 "login_url": self.login_url,
                 "checked_at": checked_at,
             }
 
         try:
-            async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
-                home = await client.get(f"{self.base}/")
-                login_page = await client.get(self.login_url)
-                csrf = _extract_csrf(login_page.text)
-                needs_captcha = _login_requires_captcha(login_page.text)
-
-                if needs_captcha and not self.captcha:
-                    return {
-                        "source": "maahed_site",
-                        "ok": False,
-                        "configured": True,
-                        "logged_in": False,
-                        "freshness_label": "سایت: لاگین ادمین نیازمند کپچا است",
-                        "detail": (
-                            "فرم /admin-panel/login کپچا دارد؛ برای اتصال خودکار یا کپچا را "
-                            "برای حساب سرویس غیرفعال کنید، یا API/توکن بدون کپچا بدهید"
-                        ),
-                        "login_url": self.login_url,
-                        "captcha_required": True,
-                        "home_http_status": home.status_code,
-                        "checked_at": checked_at,
-                    }
-
-                form: dict[str, str] = {
-                    "LoginForm[username]": self.username,
-                    "LoginForm[password]": self.password,
-                    "LoginForm[rememberMe]": "0",
-                    "login-button": "1",
-                }
-                if csrf:
-                    form["_csrf-admin"] = csrf
-                if self.captcha:
-                    form["LoginForm[captcha]"] = self.captcha
-
-                login_resp = await client.post(self.login_url, data=form)
-                logged_in = _looks_logged_in(login_resp)
-
-                admin_home = await client.get(f"{self.base}/admin-panel/")
-                admin_ok = admin_home.status_code < 400 and "login" not in str(admin_home.url).lower()
-
-                ok = logged_in and admin_ok
-                freshness = (
-                    "داده فروش/سفارش سایت: پس از لاگین ادمین — تازگی وابسته به پنل"
-                    if ok
-                    else "سایت در دسترس است؛ لاگین ادمین ناموفق یا محدود"
-                )
+            result = _run_admin_login(self.username, self.password)
+            if not result.get("ok"):
                 return {
                     "source": "maahed_site",
-                    "ok": ok,
+                    "ok": False,
                     "configured": True,
-                    "logged_in": logged_in,
-                    "admin_reachable": admin_ok,
-                    "admin_http_status": admin_home.status_code,
-                    "freshness_label": freshness,
-                    "detail": (
-                        "لاگین admin-panel موفق"
-                        if ok
-                        else (
-                            f"لاگین admin-panel مبهم (HTTP {login_resp.status_code}); "
-                            f"final_url={login_resp.url}; خانه={home.status_code}"
-                        )
-                    ),
+                    "logged_in": False,
+                    "freshness_label": "سایت: لاگین ادمین ناموفق",
+                    "detail": result.get("detail", "login failed"),
                     "login_url": self.login_url,
-                    "platform_hint": "Yii2 admin (_csrf-admin + captcha)",
                     "checked_at": checked_at,
                 }
+            return {
+                "source": "maahed_site",
+                "ok": True,
+                "configured": True,
+                "logged_in": True,
+                "freshness_label": "داده سفارش سایت: از پنل ادمین (لاگین+OCR کپچا)",
+                "detail": result.get("detail", "لاگین admin-panel موفق"),
+                "login_url": self.login_url,
+                "orders": {
+                    "title": result.get("title"),
+                    "url": result.get("url"),
+                    "http_status": result.get("order_http"),
+                    "counts": result.get("counts") or {},
+                    "ok": True,
+                },
+                "checked_at": checked_at,
+            }
         except Exception as exc:  # noqa: BLE001
             return {
                 "source": "maahed_site",
@@ -118,7 +85,18 @@ class MaahedSiteConnector:
             }
 
     async def sample_public_snapshot(self) -> dict[str, Any]:
-        """Best-effort public read until authenticated order endpoints are wired."""
+        if self.username and self.password:
+            result = _run_admin_login(self.username, self.password)
+            if result.get("ok"):
+                return {
+                    "ok": True,
+                    "authenticated": True,
+                    "orders": result.get("counts") or {},
+                    "title": result.get("title"),
+                    "freshness_label": "داده فروش سایت: خلاصه سفارش از admin-panel",
+                    "note": "لاگین با OCR کپچا (Playwright)",
+                }
+
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             resp = await client.get(f"{self.base}/")
             resp.raise_for_status()
@@ -127,32 +105,52 @@ class MaahedSiteConnector:
                 "ok": True,
                 "http_status": resp.status_code,
                 "title": titles[0].strip() if titles else "",
-                "note": "خواندن سفارش نیازمند لاگین /admin-panel است؛ فعلاً وضعیت عمومی سایت",
+                "note": "خواندن سفارش نیازمند لاگین admin-panel است؛ فعلاً وضعیت عمومی",
                 "freshness_label": "داده فروش سایت: نمونه عمومی (نه سفارش)",
             }
 
 
-def _extract_csrf(html: str) -> str | None:
-    m = re.search(r'name="csrf-param"\s+content="([^"]+)"', html)
-    param = m.group(1) if m else "_csrf-admin"
-    m = re.search(r'name="csrf-token"\s+content="([^"]+)"', html)
-    if m:
-        return m.group(1)
-    m = re.search(rf'name="{re.escape(param)}"\s+value="([^"]+)"', html)
-    return m.group(1) if m else None
+def _run_admin_login(username: str, password: str) -> dict[str, Any]:
+    script = _resolve_login_script()
+    if script is None:
+        return {
+            "ok": False,
+            "detail": "scripts/maahed_admin_login.js یافت نشد یا Playwright/node در دسترس نیست",
+        }
+    env = os.environ.copy()
+    env["MAAHED_SITE_USERNAME"] = username
+    env["MAAHED_SITE_PASSWORD"] = password
+    proc = subprocess.run(
+        ["node", str(script)],
+        capture_output=True,
+        text=True,
+        timeout=180,
+        env=env,
+        check=False,
+    )
+    raw = (proc.stdout or "").strip().splitlines()
+    if not raw:
+        return {
+            "ok": False,
+            "detail": f"login helper empty stdout stderr={proc.stderr[-500:]}",
+        }
+    try:
+        return json.loads(raw[-1])
+    except json.JSONDecodeError:
+        return {
+            "ok": False,
+            "detail": f"login helper bad json: {raw[-1][:300]} stderr={proc.stderr[-300:]}",
+        }
 
 
-def _login_requires_captcha(html: str) -> bool:
-    return "LoginForm[captcha]" in html or "loginform-captcha" in html.lower()
-
-
-def _looks_logged_in(resp: httpx.Response) -> bool:
-    url = str(resp.url).lower()
-    if "login" in url:
-        return False
-    body = resp.text.lower()
-    if "logout" in body or "خروج" in resp.text:
-        return True
-    if resp.status_code == 200 and "admin-panel" in url and "login" not in url:
-        return True
-    return False
+def _resolve_login_script() -> Path | None:
+    here = Path(__file__).resolve()
+    candidates = [
+        here.parents[3] / "scripts" / "maahed_admin_login.js",
+        here.parents[2] / "scripts" / "maahed_admin_login.js",
+        Path("/app/scripts/maahed_admin_login.js"),
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
