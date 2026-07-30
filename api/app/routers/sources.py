@@ -18,10 +18,19 @@ async def sources_status(_user: Annotated[User, Depends(get_current_user)]) -> d
     sepidar = SepidarConnector(settings)
     site = MaahedSiteConnector(settings)
     bot = get_bot_adapter(settings)
+    bot_status = bot.status()
+    probe = getattr(bot, "probe", None)
+    if callable(probe):
+        try:
+            me = await probe()
+            if isinstance(bot_status, dict):
+                bot_status = {**bot_status, "probe": me}
+        except Exception as exc:  # noqa: BLE001
+            bot_status = {**bot_status, "probe_error": str(exc)}
     return {
         "sepidar": await sepidar.status(),
         "maahed_site": await site.status(),
-        "bot": bot.status(),
+        "bot": bot_status,
     }
 
 

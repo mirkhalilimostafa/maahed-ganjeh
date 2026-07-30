@@ -26,6 +26,8 @@ class Settings(BaseSettings):
 
     telegram_bot_token: str = ""
     bale_bot_token: str = ""
+    bale_api_base_url: str = "https://tapi.bale.ai"
+    telegram_api_base_url: str = "https://api.telegram.org"
 
 
 @lru_cache
