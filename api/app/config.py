@@ -17,8 +17,12 @@ class Settings(BaseSettings):
     sepidar_mcp_token: str = ""
 
     maahed_site_base_url: str = "https://maahed.ir"
+    maahed_site_admin_login_path: str = "/admin-panel/login"
     maahed_site_username: str = ""
     maahed_site_password: str = ""
+    # Optional: if admin captcha is disabled/bypassed for a service account, leave empty.
+    # Automated login cannot solve image captcha without a human or OCR service.
+    maahed_site_captcha: str = ""
 
     telegram_bot_token: str = ""
     bale_bot_token: str = ""
