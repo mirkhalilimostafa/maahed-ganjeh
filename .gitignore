@@ -23,3 +23,6 @@ web/node_modules/
 web/dist/
 package-lock.json
 
+
+eng.traineddata
+uploads/maahed-*
