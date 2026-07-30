@@ -1,12 +1,13 @@
-# Production single-image deploy for Hamravesh Darkube
-FROM hub.hamdocker.ir/library/node:22-alpine AS webbuild
+# Production single-image deploy for Hamravesh Darkube.
+# Base images from Docker Hub (GitHub Actions); final tags push to hamdocker/ghcr.
+FROM node:22-alpine AS webbuild
 WORKDIR /web
 COPY web/package.json web/package-lock.json* ./
 RUN npm install
 COPY web/ ./
 RUN npm run build
 
-FROM hub.hamdocker.ir/library/python:3.12-slim
+FROM python:3.12-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
