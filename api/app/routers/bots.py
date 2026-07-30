@@ -1,3 +1,4 @@
+import os
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
@@ -24,6 +25,25 @@ async def bot_status(_user: Annotated[User, Depends(get_current_user)]) -> dict[
     settings = get_settings()
     bot = get_bot_adapter(settings)
     return bot.status()
+
+
+@router.get("/env-check")
+async def bot_env_check(_user: Annotated[User, Depends(get_current_user)]) -> dict[str, Any]:
+    """Diagnose whether bot tokens reached the process (booleans + key names only)."""
+    settings = get_settings()
+    keys = sorted(
+        k
+        for k in os.environ
+        if any(s in k.upper() for s in ("BALE", "TELEGRAM", "BOT_TOKEN", "SEPIDAR_MCP_TOKEN"))
+    )
+    return {
+        "os_bale_set": bool(os.environ.get("BALE_BOT_TOKEN", "").strip()),
+        "os_telegram_set": bool(os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()),
+        "os_sepidar_set": bool(os.environ.get("SEPIDAR_MCP_TOKEN", "").strip()),
+        "settings_bale_set": bool(settings.bale_bot_token.strip()),
+        "settings_telegram_set": bool(settings.telegram_bot_token.strip()),
+        "matching_env_keys": keys,
+    }
 
 
 @router.post("/send")
