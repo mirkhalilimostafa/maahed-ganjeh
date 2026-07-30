@@ -7,6 +7,14 @@ RUN npm install
 COPY web/ ./
 RUN npm run build
 
+# Isolated captcha deps (do NOT reuse root package.json — it only has @playwright/test as devDep)
+FROM node:22-bookworm-slim AS captcha
+WORKDIR /captcha
+RUN npm init -y \
+    && npm install --no-fund --no-audit tesseract.js@5.1.1 playwright@1.62.0 \
+    && test -f node_modules/playwright/cli.js \
+    && node node_modules/playwright/cli.js install --with-deps chromium
+
 FROM python:3.12-slim-bookworm
 WORKDIR /app
 
@@ -16,22 +24,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
 COPY api/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Proper Node/npm from official image (Debian apt node+npm breaks `npx playwright`)
+# Node runtime for captcha helper scripts
 COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
-COPY --from=node:22-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
-RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
-    && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+COPY --from=captcha /captcha/node_modules /app/node_modules
+COPY --from=captcha /root/.cache/ms-playwright /root/.cache/ms-playwright
 
-# Captcha OCR + Chromium (CI runners can reach Playwright CDN)
-COPY package.json ./package.json
-RUN npm install --omit=dev --no-package-lock tesseract.js playwright@1.62.0 \
-    && ./node_modules/.bin/playwright install --with-deps chromium
+# Chromium shared libraries for this distro (browsers already downloaded in captcha stage)
+RUN node node_modules/playwright/cli.js install-deps chromium
 
 COPY api/app ./app
 COPY scripts/maahed_admin_login.js scripts/ocr_digits.js /app/scripts/
 COPY --from=webbuild /web/dist ./app/static
 
-ENV PLAYWRIGHT_CHANNEL=
+ENV PLAYWRIGHT_CHANNEL= \
+    PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 RUN mkdir -p /data /app/uploads
 
 ENV DATABASE_URL=sqlite+aiosqlite:////data/ganjeh.db \
