@@ -41,5 +41,7 @@ jobs:
           push: true
           tags: |
             ghcr.io/mirkhalilimostafa/maahed-ganjeh:latest
+            ghcr.io/mirkhalilimostafa/maahed-ganjeh:${{ github.sha }}
             registry.hamdocker.ir/maahedir/maahed-ganjeh-tehran:latest
+            registry.hamdocker.ir/maahedir/maahed-ganjeh-tehran:${{ github.sha }}
           provenance: false
