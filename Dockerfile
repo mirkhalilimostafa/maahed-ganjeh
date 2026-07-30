@@ -1,13 +1,13 @@
 # Production single-image deploy for Hamravesh Darkube.
 # Base images from Docker Hub (GitHub Actions); final tags push to hamdocker/ghcr.
-FROM node:22-alpine AS webbuild
+FROM node:22-bookworm-slim AS webbuild
 WORKDIR /web
 COPY web/package.json web/package-lock.json* ./
 RUN npm install
 COPY web/ ./
 RUN npm run build
 
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
@@ -16,12 +16,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
 COPY api/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Captcha OCR + admin login helper (Playwright). Browsers installed in CI outside Iran.
+# Proper Node/npm from official image (Debian apt node+npm breaks `npx playwright`)
+COPY --from=node:22-bookworm-slim /usr/local/bin/node /usr/local/bin/node
+COPY --from=node:22-bookworm-slim /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm \
+    && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+
+# Captcha OCR + Chromium (CI runners can reach Playwright CDN)
 COPY package.json ./package.json
-RUN apt-get update && apt-get install -y --no-install-recommends nodejs npm \
-    && npm install --omit=dev tesseract.js playwright@1.62.0 \
-    && npx playwright install --with-deps chromium \
-    && rm -rf /var/lib/apt/lists/*
+RUN npm install --omit=dev --no-package-lock tesseract.js playwright@1.62.0 \
+    && ./node_modules/.bin/playwright install --with-deps chromium
 
 COPY api/app ./app
 COPY scripts/maahed_admin_login.js scripts/ocr_digits.js /app/scripts/
