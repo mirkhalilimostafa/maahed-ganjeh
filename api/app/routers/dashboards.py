@@ -1,6 +1,6 @@
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,6 +22,20 @@ from app.services.dashboard_engine import (
 )
 
 router = APIRouter(prefix="/api/dashboards", tags=["dashboards"])
+
+
+def _public_base(request: Request) -> str:
+    """Prefer live request host so share links work even if env points at a dead alias."""
+    settings = get_settings()
+    configured = (settings.app_public_base_url or "").rstrip("/")
+    forwarded_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    if forwarded_host:
+        proto = forwarded_proto or request.url.scheme or "https"
+        return f"{proto}://{forwarded_host}".rstrip("/")
+    if configured:
+        return configured
+    return str(request.base_url).rstrip("/")
 
 
 class CreateDashboardIn(BaseModel):
@@ -55,6 +69,7 @@ async def _notify_link(db: AsyncSession, user: User, recipient: str, url: str, t
 @router.post("")
 async def create_dashboard(
     body: CreateDashboardIn,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, Any]:
@@ -67,7 +82,7 @@ async def create_dashboard(
         site=MaahedSiteConnector(settings),
         title=body.title,
     )
-    payload = dashboard_to_dict(dash, settings.app_public_base_url)
+    payload = dashboard_to_dict(dash, _public_base(request))
     notify = await _notify_link(db, user, body.notify_recipient, payload["url"], payload["title"])
     payload["bot_notify"] = notify
     return payload
@@ -75,34 +90,36 @@ async def create_dashboard(
 
 @router.get("")
 async def list_dashboards(
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     _user: Annotated[User, Depends(get_current_user)],
 ) -> list[dict[str, Any]]:
-    settings = get_settings()
     result = await db.execute(
         select(Dashboard).options(selectinload(Dashboard.widgets)).order_by(Dashboard.id.desc()).limit(50)
     )
     rows = result.scalars().unique().all()
-    return [dashboard_to_dict(d, settings.app_public_base_url) for d in rows]
+    base = _public_base(request)
+    return [dashboard_to_dict(d, base) for d in rows]
 
 
 @router.get("/{public_id}")
 async def get_one(
     public_id: str,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict[str, Any]:
     """Public read by link — MVP investor share."""
-    settings = get_settings()
     dash = await get_dashboard(db, public_id)
     if dash is None:
         raise HTTPException(status_code=404, detail="داشبورد یافت نشد")
-    return dashboard_to_dict(dash, settings.app_public_base_url)
+    return dashboard_to_dict(dash, _public_base(request))
 
 
 @router.post("/{public_id}/revise")
 async def revise(
     public_id: str,
     body: ReviseIn,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, Any]:
@@ -117,7 +134,7 @@ async def revise(
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    payload = dashboard_to_dict(dash, settings.app_public_base_url)
+    payload = dashboard_to_dict(dash, _public_base(request))
     notify = await _notify_link(db, user, body.notify_recipient, payload["url"], payload["title"])
     payload["bot_notify"] = notify
     return payload
@@ -126,15 +143,15 @@ async def revise(
 @router.post("/{public_id}/publish")
 async def publish(
     public_id: str,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ) -> dict[str, Any]:
-    settings = get_settings()
     try:
         dash = await publish_dashboard(db, public_id)
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    payload = dashboard_to_dict(dash, settings.app_public_base_url)
+    payload = dashboard_to_dict(dash, _public_base(request))
     notify = await _notify_link(db, user, "", payload["url"], payload["title"])
     payload["bot_notify"] = notify
     return payload

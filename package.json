@@ -1,0 +1,14 @@
+{
+  "name": "maahed-ganjeh",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ماهد گنجه — داشبورد و مکاتبات هوشمند",
+  "scripts": {
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:data": "py -3.12 -m pytest tests/data -q"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.62.0"
+  }
+}

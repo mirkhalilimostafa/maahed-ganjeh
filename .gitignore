@@ -14,3 +14,9 @@ uploads/*
 *.db
 api/app/static/
 data/
+node_modules/
+package-lock.json
+playwright-report/
+playwright-visual/
+test-results/
+.pytest_cache/
