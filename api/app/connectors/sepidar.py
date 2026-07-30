@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -13,10 +14,16 @@ class SepidarConnector:
 
     def __init__(self, settings: Settings) -> None:
         self.url = settings.sepidar_mcp_url.rstrip("/")
-        self.token = settings.sepidar_mcp_token.strip()
+        token = settings.sepidar_mcp_token.strip()
+        if token.lower().startswith("bearer "):
+            token = token[7:].strip()
+        self.token = token
 
     def _headers(self) -> dict[str, str]:
-        headers = {"Content-Type": "application/json", "Accept": "application/json"}
+        headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json, text/event-stream",
+        }
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
         return headers
@@ -34,7 +41,6 @@ class SepidarConnector:
             }
         try:
             async with httpx.AsyncClient(timeout=20.0) as client:
-                # Prefer tools/call get_my_access via JSON-RPC when gateway speaks MCP.
                 payload = {
                     "jsonrpc": "2.0",
                     "id": 1,
@@ -43,7 +49,6 @@ class SepidarConnector:
                 }
                 resp = await client.post(self.url, headers=self._headers(), json=payload)
                 if resp.status_code >= 400:
-                    # Fallback: GET probe
                     probe = await client.get(self.url, headers=self._headers())
                     return {
                         "source": "sepidar",
@@ -54,7 +59,7 @@ class SepidarConnector:
                         "detail": f"tools/call HTTP {resp.status_code}; GET probe {probe.status_code}",
                         "checked_at": checked_at,
                     }
-                data = resp.json()
+                data = _parse_mcp_response(resp)
                 return {
                     "source": "sepidar",
                     "ok": True,
@@ -86,13 +91,26 @@ class SepidarConnector:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(self.url, headers=self._headers(), json=payload)
             resp.raise_for_status()
-            return {"ok": True, "data": resp.json()}
+            return {"ok": True, "data": _parse_mcp_response(resp)}
 
     async def sample_sales_review(self, from_date: str, to_date: str) -> dict[str, Any]:
         return await self.call_tool(
             "get_sales_review",
             {"FromDate": from_date, "ToDate": to_date, "limit": 20},
         )
+
+
+def _parse_mcp_response(resp: httpx.Response) -> Any:
+    content_type = (resp.headers.get("content-type") or "").lower()
+    text = resp.text.strip()
+    if "text/event-stream" in content_type or text.startswith("event:"):
+        for line in text.splitlines():
+            if line.startswith("data:"):
+                payload = line[5:].strip()
+                if payload:
+                    return json.loads(payload)
+        raise ValueError("empty SSE MCP response")
+    return resp.json()
 
 
 def _summarize(data: Any) -> Any:
