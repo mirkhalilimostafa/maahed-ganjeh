@@ -59,7 +59,7 @@ class SepidarConnector:
                         "detail": f"tools/call HTTP {resp.status_code}; GET probe {probe.status_code}",
                         "checked_at": checked_at,
                     }
-                data = _parse_mcp_response(resp)
+                data = _unwrap_tool_payload(_parse_mcp_response(resp))
                 return {
                     "source": "sepidar",
                     "ok": True,
@@ -91,13 +91,23 @@ class SepidarConnector:
         async with httpx.AsyncClient(timeout=60.0) as client:
             resp = await client.post(self.url, headers=self._headers(), json=payload)
             resp.raise_for_status()
-            return {"ok": True, "data": _parse_mcp_response(resp)}
+            raw = _parse_mcp_response(resp)
+            return {"ok": True, "data": _unwrap_tool_payload(raw)}
 
     async def sample_sales_review(self, from_date: str, to_date: str) -> dict[str, Any]:
         return await self.call_tool(
             "get_sales_review",
-            {"FromDate": from_date, "ToDate": to_date, "limit": 20},
+            {"FromDate": from_date, "ToDate": to_date, "limit": 50},
         )
+
+    async def sample_sales_items_review(self, from_date: str, to_date: str) -> dict[str, Any]:
+        return await self.call_tool(
+            "get_sales_items_review",
+            {"FromDate": from_date, "ToDate": to_date, "limit": 50},
+        )
+
+    async def sample_bank_accounts(self) -> dict[str, Any]:
+        return await self.call_tool("get_bank_accounts", {"limit": 20})
 
 
 def _parse_mcp_response(resp: httpx.Response) -> Any:
@@ -113,8 +123,52 @@ def _parse_mcp_response(resp: httpx.Response) -> Any:
     return resp.json()
 
 
+def _unwrap_tool_payload(data: Any) -> Any:
+    """Flatten MCP tools/call envelopes to the actual tool result.
+
+    Live gateway often returns: {jsonrpc, result:{content:[{type:'text', text:'...json...'}]}}
+    """
+    if not isinstance(data, dict):
+        return data
+
+    # jsonrpc tools/call wrapper
+    if "result" in data and ("jsonrpc" in data or "id" in data):
+        return _unwrap_tool_payload(data["result"])
+
+    content = data.get("content")
+    if isinstance(content, list) and content:
+        texts: list[str] = []
+        for part in content:
+            if isinstance(part, dict) and part.get("type") == "text" and isinstance(part.get("text"), str):
+                texts.append(part["text"])
+        if len(texts) == 1:
+            return _maybe_json(texts[0])
+        if texts:
+            return [_maybe_json(t) for t in texts]
+        return content
+
+    if "structuredContent" in data:
+        return data["structuredContent"]
+
+    return data
+
+
+def _maybe_json(text: str) -> Any:
+    s = text.strip()
+    if not s:
+        return s
+    if s[0] in "{[":
+        try:
+            return json.loads(s)
+        except json.JSONDecodeError:
+            return text
+    return text
+
+
 def _summarize(data: Any) -> Any:
     if isinstance(data, dict):
         keys = list(data.keys())[:12]
         return {"keys": keys}
+    if isinstance(data, list):
+        return {"type": "list", "len": len(data)}
     return str(data)[:200]

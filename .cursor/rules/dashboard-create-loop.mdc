@@ -1,0 +1,25 @@
+---
+description: Dashboard create flow, board vs investor framing, Sepidar unwrap and bot notify
+alwaysApply: false
+---
+
+# Dashboard create / board-report loop
+
+## Flow
+
+- Create UI: `/dashboards/new` (NL request → rule-based widgets). No visual drag-drop builder.
+- View: `/dashboards/:publicId` (auth) and public share `/d/:publicId`.
+- Engine: `api/app/services/dashboard_engine.py` — board vs investor framing, sales KPIs, bank balances.
+
+## Recurring bugs / rules
+
+- Do **not** fall back bot notify to panel username (`admin`). Bale needs numeric `chat_id`. Set `BOT_NOTIFY_RECIPIENT` (e.g. `1566616156` or `bale:1566616156`) or pass `notify_recipient` on create/revise.
+- Sepidar MCP often wraps tool results as `result.content[].text` JSON — always unwrap before using numbers. Prefer `get_sales_items_review` when `get_sales_review` is empty; widen lookback if the clock is ahead of ledger dates.
+- Investor keywords must stay narrow (`سرمایه‌گذار` / `investor`). Do not match generic `رشد`/`عملکرد` alone — that mislabels CEO/board dashboards as investor.
+- UI should show KPI cards/tables first; raw JSON is secondary/toggle only.
+
+## Verify
+
+- Unit: `pytest tests/data/test_dashboard_fixtures.py`
+- Smoke: `python scripts/_smoke_board_dashboard.py`
+- Manual: login → ساخت داشبورد → preset «گزارش هیئت‌مدیره» → check `board_framing`, sales KPIs, bank table, publish + public `/d/...`

@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     bale_bot_token: str = ""
     bale_api_base_url: str = "https://tapi.bale.ai"
     telegram_api_base_url: str = "https://api.telegram.org"
+    # Default Bale/Telegram chat_id for dashboard link notifications (e.g. "1566616156" or "bale:1566616156").
+    # Never fall back to the panel username — messenger APIs need a numeric chat_id.
+    bot_notify_recipient: str = ""
 
 
 @lru_cache

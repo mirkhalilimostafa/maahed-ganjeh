@@ -203,6 +203,100 @@ pre {
   text-align: left;
 }
 
+.kpi-grid {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.kpi-card {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.75rem 0.85rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.kpi-label {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-bottom: 0.35rem;
+}
+
+.kpi-value {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  word-break: break-word;
+}
+
+.split-tables {
+  display: grid;
+  gap: 1rem;
+}
+
+@media (min-width: 800px) {
+  .split-tables {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.rank-title {
+  margin: 0.75rem 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.rank-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.rank-table th,
+.rank-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 0.45rem 0.35rem;
+  text-align: right;
+}
+
+.rank-table .num {
+  direction: ltr;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.focus-list {
+  margin: 0.5rem 0 0;
+  padding-inline-start: 1.2rem;
+  color: var(--muted);
+}
+
+.raw-toggle,
+.preset-row .linkish,
+.share-row .linkish {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--accent);
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.share-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .hero-login {
   min-height: 100vh;
   display: grid;

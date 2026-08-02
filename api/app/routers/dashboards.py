@@ -49,15 +49,45 @@ class ReviseIn(BaseModel):
     notify_recipient: str = ""
 
 
+def _resolve_notify_recipient(explicit: str, user: User) -> tuple[str, str | None]:
+    """Pick a messenger chat_id. Never use panel username as Bale/Telegram chat_id."""
+    settings = get_settings()
+    candidates = [
+        (explicit or "").strip(),
+        (settings.bot_notify_recipient or "").strip(),
+    ]
+    for raw in candidates:
+        if not raw:
+            continue
+        # Strip optional channel prefix for numeric check
+        core = raw.split(":", 1)[-1].strip() if ":" in raw else raw
+        if core.lstrip("-").isdigit() or raw.lower().startswith(("bale:", "telegram:", "tg:")):
+            return raw, None
+        # Non-numeric explicit recipient might still be a stub/username target in stub mode
+        if get_bot_adapter(settings).channel == "stub":
+            return raw, None
+    # Last resort: only username when stub (dev), else skip with clear reason
+    bot = get_bot_adapter(settings)
+    if bot.channel == "stub":
+        return user.username, None
+    return "", (
+        "گیرنده اعلان تنظیم نشده؛ BOT_NOTIFY_RECIPIENT را روی chat_id بله بگذارید "
+        "(مثلاً 1566616156) یا notify_recipient را در درخواست بفرستید"
+    )
+
+
 async def _notify_link(db: AsyncSession, user: User, recipient: str, url: str, title: str) -> dict[str, Any]:
     settings = get_settings()
     bot = get_bot_adapter(settings)
+    target, skip_reason = _resolve_notify_recipient(recipient, user)
+    if skip_reason:
+        return {"ok": False, "channel": bot.channel, "detail": skip_reason}
     message = f"داشبورد آماده شد: {title}\n{url}"
-    result = await bot.send_message(recipient or user.username, message, {"dashboard_url": url})
+    result = await bot.send_message(target, message, {"dashboard_url": url})
     db.add(
         BotOutbox(
             channel=result.channel,
-            recipient=recipient or user.username,
+            recipient=target,
             message=message,
             payload={"dashboard_url": url, "by": user.username},
         )

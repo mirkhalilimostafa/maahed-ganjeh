@@ -7,7 +7,7 @@ const STEPS = [
   { id: "sources", label: "وضعیت سپیدار و سایت" },
   { id: "create", label: "ساخت داشبورد جلسه سرمایه‌گذار" },
   { id: "freshness", label: "برچسب تازگی روی هر بخش" },
-  { id: "link", label: "لینک وب + اعلان StubBot" },
+    { id: "link", label: "لینک وب + اعلان بات" },
   { id: "revise", label: "اصلاح بعد از مشاهده" },
 ];
 

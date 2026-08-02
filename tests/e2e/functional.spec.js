@@ -102,8 +102,8 @@ test.describe("functional — public dashboard link", () => {
   });
 });
 
-test.describe("functional — bot stub outbox", () => {
-  test("creating dashboard writes stub bot outbox message", async ({ request }) => {
+test.describe("functional — bot notify", () => {
+  test("creating dashboard handles bot notify without crashing", async ({ request }) => {
     const loginRes = await request.post("/api/auth/login", {
       form: {
         username: process.env.GANJEH_ADMIN_USER || "admin",
@@ -112,20 +112,34 @@ test.describe("functional — bot stub outbox", () => {
     });
     const { access_token } = await loginRes.json();
     const headers = { Authorization: `Bearer ${access_token}` };
+    const createPayload = {
+      title: "bot notify check",
+      request_text: "جلسه سرمایه‌گذار — تست ارسال لینک به بات",
+    };
+    if (process.env.BOT_NOTIFY_RECIPIENT) {
+      createPayload.notify_recipient = process.env.BOT_NOTIFY_RECIPIENT;
+    }
     const createRes = await request.post("/api/dashboards", {
       headers,
-      data: {
-        title: "bot stub check",
-        request_text: "جلسه سرمایه‌گذار — تست ارسال لینک به بات",
-      },
+      data: createPayload,
     });
     expect(createRes.ok()).toBeTruthy();
     const dash = await createRes.json();
-    expect(dash.bot_notify?.ok).toBeTruthy();
-    expect(dash.bot_notify?.channel).toBe("stub");
-    const recent = await request.get("/api/bots/stub/recent", { headers });
-    expect(recent.ok()).toBeTruthy();
-    const body = await recent.json();
-    expect(body.items.some((i) => (i.message || "").includes(dash.public_id) || (i.payload?.dashboard_url || "").includes(dash.public_id))).toBeTruthy();
+    expect(["stub", "bale", "telegram", "multi"]).toContain(dash.bot_notify?.channel);
+    if (dash.bot_notify?.ok && dash.bot_notify.channel === "stub") {
+      const recent = await request.get("/api/bots/stub/recent", { headers });
+      expect(recent.ok()).toBeTruthy();
+      const body = await recent.json();
+      expect(
+        body.items.some(
+          (i) =>
+            (i.message || "").includes(dash.public_id) ||
+            (i.payload?.dashboard_url || "").includes(dash.public_id),
+        ),
+      ).toBeTruthy();
+    } else if (!dash.bot_notify?.ok) {
+      // Without a numeric chat_id, Bale must not pretend username=admin is a recipient.
+      expect(String(dash.bot_notify?.detail || "")).toMatch(/گیرنده|chat_id|BOT_NOTIFY|no such/i);
+    }
   });
 });
