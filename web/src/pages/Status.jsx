@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
@@ -17,11 +16,6 @@ function StatusCard({ title, info }) {
         <p className="meta">فایل‌های آپلود: {info.upload_file_count}</p>
       )}
       {info.note && info.source === "darkube_disk" && <p className="meta">{info.note}</p>}
-      {info.related?.manual_ingest && (
-        <p className="meta">
-          <Link to={info.related.manual_ingest}>ورود دستی / فایل‌های ذخیره‌شده</Link>
-        </p>
-      )}
       <p className="meta">{info.detail || (!info.mount_path && JSON.stringify(info).slice(0, 180))}</p>
     </div>
   );
