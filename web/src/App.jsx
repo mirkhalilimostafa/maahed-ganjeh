@@ -16,7 +16,7 @@ function Shell({ children }) {
       <h1 className="brand">
         ماهد <span>گنجه</span>
       </h1>
-      <p className="sub">داشبورد و مکاتبات هوشمند — سرور داخلی شرکت</p>
+      <p className="sub">داشبورد و مکاتبات هوشمند</p>
       {authed && (
         <nav className="nav">
           <Link className={loc.pathname === "/" ? "active" : ""} to="/">

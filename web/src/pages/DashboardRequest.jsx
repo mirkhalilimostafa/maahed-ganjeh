@@ -51,7 +51,7 @@ export default function DashboardRequestPage() {
 
   return (
     <form className="panel" onSubmit={onSubmit}>
-      <h2 style={{ marginTop: 0 }}>درخواست داشبورد</h2>
+      <h2>درخواست داشبورد</h2>
       <p className="meta">زبان طبیعی → پیشنهاد اجزا → لینک وب (+ اعلان بات در صورت تنظیم گیرنده)</p>
       <div className="preset-row">
         {PRESETS.map((p) => (

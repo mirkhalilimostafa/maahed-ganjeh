@@ -58,7 +58,7 @@ export default function MvpChecklistPage() {
 
   return (
     <div className="panel">
-      <h2 style={{ marginTop: 0 }}>فاز ۳ — چک‌لیست سناریوی MVP</h2>
+      <h2>فاز ۳ — چک‌لیست سناریوی MVP</h2>
       <p className="meta">مسیر واقعی جلسه سرمایه‌گذار از اول تا آخر</p>
       <ol>
         {STEPS.map((s) => (
@@ -68,12 +68,12 @@ export default function MvpChecklistPage() {
       <button className="primary" type="button" disabled={running} onClick={runScenario}>
         {running ? "در حال اجرای سناریو…" : "اجرای خودکار سناریوی MVP"}
       </button>
-      <p className="meta" style={{ marginTop: "0.75rem" }}>
+      <p className="meta meta-spaced">
         یا دستی از <Link to="/dashboards/new">ساخت داشبورد</Link>
       </p>
       {error && <p className="error">{error}</p>}
       {result && (
-        <div style={{ marginTop: "1rem" }}>
+        <div className="result-block">
           <p className="freshness">نتیجه اجرا</p>
           <pre>{JSON.stringify(result.checks, null, 2)}</pre>
           {result.dash?.public_id && (

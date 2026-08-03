@@ -32,7 +32,7 @@ export default function ManualIngestPage() {
 
   return (
     <form className="panel" onSubmit={onSubmit}>
-      <h2 style={{ marginTop: 0 }}>ورود دستی داده</h2>
+      <h2>ورود دستی داده</h2>
       <p className="meta">منبع، تاریخ، توضیح، فایل — همان API که بات بعداً صدا می‌زند</p>
       <label>منبع</label>
       <input value={source} onChange={(e) => setSource(e.target.value)} required placeholder="مثلاً اکسل تیم فروش" />

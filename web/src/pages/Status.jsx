@@ -27,11 +27,11 @@ export default function StatusPage() {
   return (
     <div>
       <div className="panel">
-        <h2 style={{ marginTop: 0 }}>وضعیت اتصالات</h2>
-        <p className="meta">سپیدار، سایت ماهد، و بات (فعلاً Stub)</p>
+        <h2>وضعیت اتصالات</h2>
+        <p className="meta">سپیدار، سایت ماهد، و بات</p>
         {error && <p className="error">{error}</p>}
       </div>
-      <div className="status-grid" style={{ marginTop: "1rem" }}>
+      <div className="status-grid status-grid-spaced">
         <StatusCard title="سپیدار" info={data?.sepidar} />
         <StatusCard title="سایت maahed.ir" info={data?.maahed_site} />
         <StatusCard title="بات" info={data?.bot} />

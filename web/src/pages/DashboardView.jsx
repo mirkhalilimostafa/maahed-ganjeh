@@ -268,12 +268,10 @@ export default function DashboardViewPage({ publicMode = false }) {
   return (
     <div>
       <div className="panel motion-fade">
-        <h2 style={{ marginTop: 0 }}>{dash.title}</h2>
+        <h2>{dash.title}</h2>
         <p className="meta">
           وضعیت: <span className="badge">{statusLabel}</span>
-          <span className="meta" style={{ marginInlineStart: "0.5rem" }}>
-            ({dash.status})
-          </span>
+          <span className="meta status-code"> ({dash.status})</span>
         </p>
         <p className="meta share-row">
           لینک:{" "}
@@ -291,7 +289,7 @@ export default function DashboardViewPage({ publicMode = false }) {
         )}
         <p>{dash.request_text}</p>
         {!publicMode && getToken() && (
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+          <div className="action-row">
             <button className="primary" type="button" disabled={busy} onClick={publish}>
               انتشار
             </button>
@@ -302,7 +300,7 @@ export default function DashboardViewPage({ publicMode = false }) {
       <div className="panel">
         {dash.widgets?.map((w) => (
           <div className="widget" key={w.key}>
-            <h3 style={{ margin: 0 }}>{w.title}</h3>
+            <h3>{w.title}</h3>
             <p className="freshness">{w.freshness_label}</p>
             <p className="meta">
               منبع: {w.source} — فیلد: {w.source_field}
@@ -314,7 +312,7 @@ export default function DashboardViewPage({ publicMode = false }) {
 
       {!publicMode && getToken() && (
         <div className="panel">
-          <h3 style={{ marginTop: 0 }}>درخواست اصلاح</h3>
+          <h3>درخواست اصلاح</h3>
           <textarea
             rows={3}
             value={revision}
