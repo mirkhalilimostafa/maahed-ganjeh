@@ -33,6 +33,13 @@ class Settings(BaseSettings):
     # Default Bale/Telegram chat_id for dashboard link notifications (e.g. "1566616156" or "bale:1566616156").
     # Never fall back to the panel username — messenger APIs need a numeric chat_id.
     bot_notify_recipient: str = ""
+    # Inbound file receive from Bale → UPLOAD_DIR + manual_ingests.
+    # Comma-separated chat_ids; empty → fall back to BOT_NOTIFY_RECIPIENT.
+    bale_ingest_chat_ids: str = ""
+    # auto | webhook | poll | off — auto picks webhook when APP_PUBLIC_BASE_URL is public https.
+    bale_ingest_mode: str = "auto"
+    # Optional Telegram-compatible webhook secret (header X-Telegram-Bot-Api-Secret-Token).
+    bale_webhook_secret: str = ""
 
 
 @lru_cache

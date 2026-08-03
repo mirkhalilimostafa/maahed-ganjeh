@@ -9,6 +9,7 @@ from app.connectors.sepidar import SepidarConnector
 from app.connectors.site import MaahedSiteConnector
 from app.connectors.bots import get_bot_adapter
 from app.models import User
+from app.services.bale_inbound import get_runtime_ingest_mode, inbound_status_payload
 from app.services.health_loop import run_login_health_loop
 
 router = APIRouter(prefix="/api/sources", tags=["sources"])
@@ -42,9 +43,9 @@ async def sources_catalog(_user: Annotated[User, Depends(get_current_user)]) -> 
             },
             {
                 "id": "bot",
-                "label": "بات (اعلان)",
+                "label": "بات (اعلان + دریافت فایل بله)",
                 "kind": "notify_channel",
-                "role": "کانال اعلان بله/تلگرام — منبع داده نیست",
+                "role": "اعلان بله/تلگرام و دریافت فایل ورودی از بله به دیسک پایدار — منبع ERP نیست",
                 "selectable_for_dashboard": False,
             },
         ]
@@ -62,8 +63,12 @@ async def sources_status(_user: Annotated[User, Depends(get_current_user)]) -> d
     if isinstance(bot_status, dict):
         bot_status = {
             **bot_status,
-            "label": bot_status.get("label") or "بات (اعلان)",
+            "label": bot_status.get("label") or "بات (اعلان + دریافت فایل بله)",
             "kind": "notify_channel",
+            "inbound_file_receive": inbound_status_payload(
+                settings,
+                active_mode=get_runtime_ingest_mode(),
+            ),
         }
     probe = getattr(bot, "probe", None)
     if callable(probe):
@@ -125,5 +130,5 @@ async def darkube_disk_sample(_user: Annotated[User, Depends(get_current_user)])
         "ok": bool(status.get("ok")),
         "status": status,
         "source_field": "دیسک پایدار.وضعیت_مونت_و_آپلود",
-        "hint": "فایل‌ها از /ingest (manual-ingest) روی UPLOAD_DIR ذخیره می‌شوند",
+        "hint": "فایل‌ها از /ingest (manual-ingest) یا دریافت از بله روی UPLOAD_DIR ذخیره می‌شوند",
     }

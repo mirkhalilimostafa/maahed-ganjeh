@@ -70,5 +70,18 @@ def get_bot_adapter(settings: Settings) -> BotAdapter:
     return MultiBot(bots, default)
 
 
+def get_bale_bot(settings: Settings) -> BaleBot | None:
+    """Return configured BaleBot even when MultiBot is the primary adapter."""
+    if not settings.bale_bot_token.strip():
+        return None
+    adapter = get_bot_adapter(settings)
+    if isinstance(adapter, BaleBot):
+        return adapter
+    if isinstance(adapter, MultiBot):
+        bot = adapter._by_channel.get("bale")
+        return bot if isinstance(bot, BaleBot) else None
+    return BaleBot(settings.bale_bot_token, api_base=settings.bale_api_base_url)
+
+
 def get_stub_bot() -> StubBot:
     return _stub

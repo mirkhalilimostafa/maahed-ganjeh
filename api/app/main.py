@@ -7,8 +7,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.auth import ensure_admin_user
+from app.config import get_settings
 from app.db import SessionLocal, init_db
 from app.routers import auth_routes, bots, dashboards, health, manual_ingest, sources
+from app.services.bale_inbound import start_bale_inbound, stop_bale_inbound
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -18,7 +20,15 @@ async def lifespan(_app: FastAPI):
     await init_db()
     async with SessionLocal() as db:
         await ensure_admin_user(db)
-    yield
+    try:
+        await start_bale_inbound(get_settings())
+    except Exception:  # noqa: BLE001
+        # Never block API boot if Bale webhook/poll setup fails.
+        pass
+    try:
+        yield
+    finally:
+        await stop_bale_inbound()
 
 
 app = FastAPI(

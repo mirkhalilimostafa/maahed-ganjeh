@@ -17,3 +17,13 @@ alwaysApply: true
 - **Do NOT** use GitHub-raw patch-on-start as Darkube `args` without `|| echo patch-skip;` before uvicorn — a failing/hanging patch caused `no available server`. Safe form: patch best-effort then `exec uvicorn ...`.
 - Current working Darkube startup (until image SHA is pinned): `command=/bin/sh -c` and args that download bots/config from GitHub raw then `exec uvicorn app.main:app --host 0.0.0.0 --port 8000`.
 - Verified live: `GET /api/bots/status` → `channel=bale` / `mode=multi`; `/api/bots/env-check` all true; site `/health` ok.
+
+## Inbound file receive (دریافت فایل از بله)
+
+- Send a document/photo/video/audio/voice in **private chat** to `@maahedganjehbot` from an allowlisted chat_id.
+- Endpoint: public `POST /api/bots/bale/webhook` (preferred). Startup (`BALE_INGEST_MODE=auto`) calls `setWebhook` to `{APP_PUBLIC_BASE_URL}/api/bots/bale/webhook` when base URL is public https; else falls back to **getUpdates polling**.
+- Admin: `GET /api/bots/bale/inbound-status`, `POST /api/bots/bale/set-webhook` (JWT). Status also under `inbound_file_receive` on `/api/bots/status` and `/api/sources/status`.
+- Allowlist: `BALE_INGEST_CHAT_IDS` (comma-separated) or fallback `BOT_NOTIFY_RECIPIENT` (default owner `1566616156`). Others get a short rejection reply.
+- Files land in `UPLOAD_DIR` (Darkube: `/data/uploads`) and a `manual_ingests` row with `source=bale`, same path as `/ingest`.
+- Optional `BALE_WEBHOOK_SECRET` → header `X-Telegram-Bot-Api-Secret-Token`.
+- Keep replica=1 with persistent disk; outbound notify must keep working.
