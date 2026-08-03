@@ -9,6 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.auth import get_current_user
 from app.config import get_settings
 from app.connectors.bots import get_bot_adapter
+from app.connectors.darkube_disk import DarkubeDiskConnector
 from app.connectors.sepidar import SepidarConnector
 from app.connectors.site import MaahedSiteConnector
 from app.db import get_db
@@ -42,11 +43,14 @@ class CreateDashboardIn(BaseModel):
     request_text: str = Field(min_length=3)
     title: str | None = None
     notify_recipient: str = ""
+    # Optional source ids from GET /api/sources (e.g. darkube_disk). Sepidar/site stay default.
+    sources: list[str] | None = None
 
 
 class ReviseIn(BaseModel):
     revision_notes: str = Field(min_length=1)
     notify_recipient: str = ""
+    sources: list[str] | None = None
 
 
 def _resolve_notify_recipient(explicit: str, user: User) -> tuple[str, str | None]:
@@ -111,6 +115,8 @@ async def create_dashboard(
         sepidar=SepidarConnector(settings),
         site=MaahedSiteConnector(settings),
         title=body.title,
+        disk=DarkubeDiskConnector(settings),
+        selected_sources=body.sources,
     )
     payload = dashboard_to_dict(dash, _public_base(request))
     notify = await _notify_link(db, user, body.notify_recipient, payload["url"], payload["title"])
@@ -161,6 +167,8 @@ async def revise(
             body.revision_notes,
             SepidarConnector(settings),
             MaahedSiteConnector(settings),
+            disk=DarkubeDiskConnector(settings),
+            selected_sources=body.sources,
         )
     except ValueError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc

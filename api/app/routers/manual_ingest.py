@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
@@ -9,17 +8,16 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth import get_current_user
+from app.config import get_settings
+from app.connectors.darkube_disk import resolve_upload_dir
 from app.db import get_db
 from app.models import ManualIngest, User
 
 router = APIRouter(prefix="/api/manual-ingest", tags=["manual-ingest"])
 
-UPLOAD_DIR = Path(os.environ.get("UPLOAD_DIR", "/app/uploads"))
-try:
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-except OSError:
-    UPLOAD_DIR = Path(__file__).resolve().parents[2] / "uploads"
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+def _upload_dir() -> Path:
+    return resolve_upload_dir(get_settings())
 
 
 class ManualIngestOut(BaseModel):
@@ -29,6 +27,7 @@ class ManualIngestOut(BaseModel):
     description: str
     filename: str | None
     created_by: str
+    storage: str | None = None
 
 
 @router.post("", response_model=ManualIngestOut)
@@ -41,9 +40,10 @@ async def create_manual_ingest(
     file: UploadFile | None = File(default=None),
 ) -> ManualIngestOut:
     filename = None
+    upload_dir = _upload_dir()
     if file is not None and file.filename:
         safe = f"{uuid4().hex}_{file.filename}"
-        dest = UPLOAD_DIR / safe
+        dest = upload_dir / safe
         content = await file.read()
         dest.write_bytes(content)
         filename = safe
@@ -65,6 +65,7 @@ async def create_manual_ingest(
         description=row.description,
         filename=row.filename,
         created_by=row.created_by,
+        storage=str(upload_dir),
     )
 
 
@@ -75,6 +76,7 @@ async def list_manual_ingests(
 ) -> list[ManualIngestOut]:
     result = await db.execute(select(ManualIngest).order_by(ManualIngest.id.desc()).limit(50))
     rows = result.scalars().all()
+    storage = str(_upload_dir())
     return [
         ManualIngestOut(
             id=r.id,
@@ -83,6 +85,7 @@ async def list_manual_ingests(
             description=r.description,
             filename=r.filename,
             created_by=r.created_by,
+            storage=storage,
         )
         for r in rows
     ]

@@ -4,7 +4,7 @@ import { api } from "../api";
 
 const STEPS = [
   { id: "login", label: "لاگین پنل" },
-  { id: "sources", label: "وضعیت سپیدار و سایت" },
+  { id: "sources", label: "وضعیت سپیدار، سایت و دیسک دارکوب" },
   { id: "create", label: "ساخت داشبورد جلسه سرمایه‌گذار" },
   { id: "freshness", label: "برچسب تازگی روی هر بخش" },
     { id: "link", label: "لینک وب + اعلان بات" },

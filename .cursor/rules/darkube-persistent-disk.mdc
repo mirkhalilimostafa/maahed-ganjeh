@@ -1,0 +1,51 @@
+---
+description: Darkube persistent disk (PVC) for uploads + SQLite on /data
+alwaysApply: true
+---
+
+# Darkube persistent disk (maahed-ganjeh-tehran)
+
+## Layout (live)
+
+- App: `maahed-ganjeh-tehran` (`faf37c36-82fb-4989-872e-932c7b934ae7`)
+- Disk: **10 GiB** PVC, partition name `data`, mount **`/data`**
+- SQLite: `DATABASE_URL=sqlite+aiosqlite:////data/ganjeh.db` → file `/data/ganjeh.db`
+- Uploads: `UPLOAD_DIR=/data/uploads` (create with `mkdir -p` if missing)
+- Verified: `df -h /data` → `/dev/loop2 10G ... /data` (btrfs)
+
+## Product taxonomy (منابع)
+
+- First-class source id: **`darkube_disk`** — label «دیسک پایدار دارکوب», kind `persistent_storage`
+- Appears in `GET /api/sources` catalog, `GET /api/sources/status`, Status UI, optional dashboard source checkbox
+- **Role:** files from manual ingest + SQLite persistence — **not** a live ERP substitute for Sepidar numbers
+- Status `ok` when `/data` (or reachable `UPLOAD_DIR`) exists and is writable; includes path, approx usage, upload file count, link to `/ingest`
+- Bot remains `kind=notify_channel` (اعلان), not a data source
+
+## Cost & ops constraints
+
+- Price: **~165,000 Rial per GiB / month** → ~**1,650,000 Rial/month** for 10 GiB (UI: «قیمت به ازای هر گیگابایت»)
+- With a persistent disk attached: keep **replica = 1** (PVC is not multi-attach friendly)
+- **No zero-downtime** rolling updates while disk is attached — expect brief not-ready during save/redeploy
+- Optional: Darkube disk backup UI («افزودن تنظیمات بکاپ») — not required for basic persistence
+
+## Critical UI gotcha (do not regress)
+
+Filling `#size_in_Gi`, `#display_name`, `#mount_path` alone is **not** enough. Warning «دیسک حداقل باید یک پارتیشن داشته باشد» means the partition row was never committed.
+
+Correct sequence:
+
+1. Resource management → مدیریت دیسک → «افزودن دیسک» (if empty)
+2. Size `10`, partition name `data`, mount `/data`
+3. Click the purple **`+`** (icon-only primary next to the partition fields; tooltip may say «افزودن دیسک») — **not** «افزودن تنظیمات بکاپ»
+4. Confirm list shows «پارتیشن‌های دیسک» → `data` `/data`
+5. «ذخیره تغییرات» and wait until healthy again
+
+Automation: `scripts/darkube_disk_add_partition.js` (commit + save + UPLOAD_DIR), verify with `scripts/darkube_disk_verify.js`. Env: `HAMRAVESH_EMAIL`, `HAMRAVESH_PASSWORD`, `PLAYWRIGHT_CHANNEL=chrome`.
+
+## Do / Don't
+
+- Do keep DB + uploads under `/data` so redeploys do not wipe state
+- Do not point uploads at ephemeral `/app/uploads` in production Darkube
+- Do not scale replicas > 1 while this PVC is mounted
+- Do not commit Hamravesh credentials or bot tokens
+- Do not treat `darkube_disk` as Sepidar for live finance KPIs

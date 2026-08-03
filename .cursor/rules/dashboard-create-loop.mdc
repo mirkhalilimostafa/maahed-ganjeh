@@ -20,6 +20,7 @@ alwaysApply: false
 
 ## Verify
 
-- Unit: `pytest tests/data/test_dashboard_fixtures.py`
+- Unit: `pytest tests/data/test_dashboard_fixtures.py tests/data/test_darkube_disk_source.py`
 - Smoke: `python scripts/_smoke_board_dashboard.py`
 - Manual: login → ساخت داشبورد → preset «گزارش هیئت‌مدیره» → check `board_framing`, sales KPIs, bank table, publish + public `/d/...`
+- Sources: Status page / `GET /api/sources/status` includes `darkube_disk`; optional checkbox on create for storage widget

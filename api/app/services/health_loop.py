@@ -6,6 +6,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.connectors.bots import get_bot_adapter
+from app.connectors.darkube_disk import DarkubeDiskConnector
 from app.connectors.sepidar import SepidarConnector
 from app.connectors.site import MaahedSiteConnector
 
@@ -18,10 +19,12 @@ async def collect_sources_health(settings: Settings | None = None) -> dict[str, 
     settings = settings or get_settings()
     sepidar = SepidarConnector(settings)
     site = MaahedSiteConnector(settings)
+    disk = DarkubeDiskConnector(settings)
     bot = get_bot_adapter(settings)
 
     sepidar_status = await sepidar.status()
     site_status = await site.status()
+    disk_status = await disk.status()
     bot_status = bot.status()
     probe = getattr(bot, "probe", None)
     if callable(probe):
@@ -36,6 +39,7 @@ async def collect_sources_health(settings: Settings | None = None) -> dict[str, 
     checks = {
         "sepidar": sepidar_status,
         "maahed_site": site_status,
+        "darkube_disk": disk_status,
         "bot": bot_status,
         "data": {
             "ok": data_ok,
@@ -72,6 +76,7 @@ def _format_bale_message(report: dict[str, Any]) -> str:
     labels = {
         "sepidar": "سپیدار",
         "maahed_site": "سایت ماهد",
+        "darkube_disk": "دیسک پایدار دارکوب",
         "bot": "بات",
         "data": "داده فروش/مالی",
     }

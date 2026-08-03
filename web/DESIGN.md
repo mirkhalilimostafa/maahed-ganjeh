@@ -10,14 +10,14 @@ Midnight command center on near-black surfaces with paper-white type and one ele
 
 | Token | Value | Role |
 |-------|-------|------|
-| `--color-void` | `#08090a` | Page canvas |
-| `--color-carbon` | `#0f1011` | Cards, nav |
-| `--color-obsidian` | `#161718` | Elevated panels |
-| `--color-graphite` | `#23252a` | Subtle borders |
-| `--color-smoke` | `#383b3f` | Stronger dividers |
-| `--color-ash` | `#62666d` | Muted text |
-| `--color-fog` | `#8a8f98` | Tertiary / placeholders |
-| `--color-mist` | `#d0d6e0` | Secondary headings, nav text |
+| `--color-void` | `#3f434b` | Page canvas (mid charcoal gray) |
+| `--color-carbon` | `#4c515a` | Cards, nav |
+| `--color-obsidian` | `#585e68` | Elevated panels |
+| `--color-graphite` | `#6a707a` | Subtle borders |
+| `--color-smoke` | `#7c838e` | Stronger dividers |
+| `--color-ash` | `#a0a6b0` | Muted text |
+| `--color-fog` | `#c2c6ce` | Tertiary / placeholders |
+| `--color-mist` | `#eceef1` | Secondary headings, nav text |
 | `--color-bone` | `#e5e5e6` | High-contrast on dark buttons |
 | `--color-paper` | `#ffffff` | Primary headings |
 | `--color-acid-lime` | `#e4f222` | Primary CTA / active nav only |

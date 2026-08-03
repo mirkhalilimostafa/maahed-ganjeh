@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { api, getToken } from "../api";
 
 const STATUS_FA = {
@@ -54,7 +54,7 @@ function RankTable({ title, rows, nameKey = "name", valueKey = "net" }) {
   );
 }
 
-function WidgetBody({ w }) {
+function WidgetBody({ w, publicMode = false }) {
   const data = w.data || {};
   const kpis = data.kpis;
   const cash = data.cash_banks;
@@ -188,6 +188,43 @@ function WidgetBody({ w }) {
     );
   }
 
+  if (w.key === "darkube_disk_storage") {
+    const st = data.status || {};
+    return (
+      <div>
+        <p className="meta">{data.disclaimer}</p>
+        <KpiGrid
+          items={[
+            {
+              label: "وضعیت دیسک",
+              value: st.ok ? "متصل" : "ناقص",
+              hint: st.freshness_label || st.detail,
+            },
+            {
+              label: "مصرف",
+              value: st.usage_label || "—",
+              hint: st.mount_path || st.upload_dir,
+            },
+            {
+              label: "فایل آپلود",
+              value: typeof st.upload_file_count === "number" ? String(st.upload_file_count) : "—",
+              hint: st.upload_dir,
+            },
+          ]}
+        />
+        {!publicMode && data.manual_ingest_path && (
+          <p className="meta">
+            <Link to={data.manual_ingest_path}>ورود دستی / فایل‌ها</Link>
+          </p>
+        )}
+        <button type="button" className="linkish raw-toggle" onClick={() => setShowRaw((v) => !v)}>
+          {showRaw ? "بستن JSON خام" : "نمایش JSON خام"}
+        </button>
+        {showRaw && <pre>{JSON.stringify(data, null, 2)}</pre>}
+      </div>
+    );
+  }
+
   return <pre>{JSON.stringify(data, null, 2)}</pre>;
 }
 
@@ -305,7 +342,7 @@ export default function DashboardViewPage({ publicMode = false }) {
             <p className="meta">
               منبع: {w.source} — فیلد: {w.source_field}
             </p>
-            <WidgetBody w={w} />
+            <WidgetBody w={w} publicMode={publicMode} />
           </div>
         ))}
       </div>

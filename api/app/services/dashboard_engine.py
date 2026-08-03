@@ -9,6 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.connectors.darkube_disk import DarkubeDiskConnector, SOURCE_ID as DISK_SOURCE_ID
 from app.connectors.sepidar import SepidarConnector
 from app.connectors.site import MaahedSiteConnector
 from app.models import Dashboard, Widget
@@ -32,6 +33,19 @@ BOARD_KEYWORDS = (
     "گزارش مالی",
     "نقدینگی",
     "مطالبات",
+)
+DISK_KEYWORDS = (
+    "دیسک",
+    "دارکوب",
+    "آپلود",
+    "ورود دستی",
+    "فایل آپلود",
+    "ذخیره‌سازی",
+    "ذخیره سازی",
+    "upload",
+    "darkube",
+    "persistent",
+    "/data",
 )
 
 
@@ -215,15 +229,29 @@ async def propose_widgets(
     request_text: str,
     sepidar: SepidarConnector,
     site: MaahedSiteConnector,
+    disk: DarkubeDiskConnector | None = None,
+    selected_sources: list[str] | None = None,
 ) -> list[dict[str, Any]]:
     """Rule-based propose for v0 (NL → component list). LLM can replace later without API change."""
     text = request_text.strip()
     lower = text.lower()
     is_investor = any(k in text or k in lower for k in INVESTOR_KEYWORDS)
     is_board = any(k in text or k in lower for k in BOARD_KEYWORDS)
+    wants_disk = False
+    if selected_sources is not None:
+        wants_disk = DISK_SOURCE_ID in selected_sources or "persistent_storage" in selected_sources
+    else:
+        wants_disk = any(k in text or k in lower for k in DISK_KEYWORDS)
 
     sepidar_status = await sepidar.status()
     site_status = await site.status()
+    disk_status: dict[str, Any] | None = None
+    if wants_disk:
+        if disk is None:
+            from app.config import get_settings
+
+            disk = DarkubeDiskConnector(get_settings())
+        disk_status = await disk.status()
 
     today = date.today()
     from_date = (today - timedelta(days=90)).isoformat()
@@ -315,6 +343,27 @@ async def propose_widgets(
         }
     )
 
+    if wants_disk and disk_status is not None:
+        widgets.append(
+            {
+                "key": "darkube_disk_storage",
+                "title": "دیسک پایدار دارکوب (فایل و دیتابیس)",
+                "source": DISK_SOURCE_ID,
+                "source_field": "دیسک پایدار.وضعیت_مونت_و_آپلود",
+                "freshness_label": disk_status.get("freshness_label") or "دیسک پایدار",
+                "freshness_kind": "storage",
+                "sort_order": 4,
+                "data": {
+                    "status": disk_status,
+                    "disclaimer": (
+                        "این منبع ذخیره‌سازی فایل‌های ورود دستی و SQLite است؛ "
+                        "اعداد زنده ERP را از سپیدار بگیرید"
+                    ),
+                    "manual_ingest_path": "/ingest",
+                },
+            }
+        )
+
     if is_board:
         widgets.append(
             {
@@ -364,8 +413,12 @@ async def create_dashboard_from_request(
     sepidar: SepidarConnector,
     site: MaahedSiteConnector,
     title: str | None = None,
+    disk: DarkubeDiskConnector | None = None,
+    selected_sources: list[str] | None = None,
 ) -> Dashboard:
-    widgets_spec = await propose_widgets(request_text, sepidar, site)
+    widgets_spec = await propose_widgets(
+        request_text, sepidar, site, disk=disk, selected_sources=selected_sources
+    )
     dash = Dashboard(
         public_id=str(uuid.uuid4()),
         title=title or _default_title(request_text),
@@ -399,6 +452,8 @@ async def revise_dashboard(
     revision_notes: str,
     sepidar: SepidarConnector,
     site: MaahedSiteConnector,
+    disk: DarkubeDiskConnector | None = None,
+    selected_sources: list[str] | None = None,
 ) -> Dashboard:
     dash = await get_dashboard(db, public_id)
     if dash is None:
@@ -411,7 +466,9 @@ async def revise_dashboard(
     for w in list(dash.widgets):
         await db.delete(w)
     await db.flush()
-    for spec in await propose_widgets(combined, sepidar, site):
+    for spec in await propose_widgets(
+        combined, sepidar, site, disk=disk, selected_sources=selected_sources
+    ):
         db.add(
             Widget(
                 dashboard_id=dash.id,

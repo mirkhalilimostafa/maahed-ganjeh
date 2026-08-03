@@ -1,0 +1,19 @@
+---
+description: Bale/Telegram bot wiring and owner chat_id for notify tests
+alwaysApply: true
+---
+
+# Bots (Bale preferred, Telegram fallback)
+
+- Tokens live only in local `.env` and Darkube secure env (`BALE_BOT_TOKEN`, `TELEGRAM_BOT_TOKEN`). Never commit them.
+- Owner Bale private chat_id after `/start` on `@maahedganjehbot`: **`1566616156`** (username `s_m_mirkhalili`). Use as `notify_recipient` / `/api/bots/send` recipient. Prefix optional: `bale:1566616156`. For dashboard create/revise/publish auto-notify set Darkube/local env `BOT_NOTIFY_RECIPIENT=1566616156` (do not fall back to panel username `admin`).
+- Telegram bot: `@maahedganjetbot`. `api.telegram.org` is often blocked from Iran; getUpdates/send may need Darkube egress or proxy. Prefer Bale for Iran.
+- Darkube helper: `scripts/darkube_set_bot_tokens.js` (needs `HAMRAVESH_EMAIL`, `HAMRAVESH_PASSWORD`, tokens).
+- Live still shows Stub until tokens are in Darkube **and** image includes commit `71f7c29+` bot adapters; after env change, wait for pod restart/rebuild then check `GET /api/bots/status`.
+- CI: `registry.hamdocker.ir` often EOF from GitHub Actions. Workflow must keep **GHCR push required** and **Hamdocker best-effort** (`continue-on-error`) so owners are not spammed with failure emails on every flake.
+- Root cause of Stub despite tokens in env: Darkube was stuck on an **old image** that only had `StubBot` (no `bale.py`). Tokens were present (`BALE_BOT_TOKEN` len>0) but code ignored them.
+- Workaround applied on Darkube general page: `command=/bin/sh -c` and `args=` patch config+bots from GitHub raw then `exec uvicorn...`. Verify with `GET /api/bots/status` → `channel=bale` and `/api/bots/env-check`.
+- Prefer eventually pinning image tag to SHA `68b1078c673bcae817215e181455244a99e53870` (or newer) so startup patch is unnecessary.
+- **Do NOT** use GitHub-raw patch-on-start as Darkube `args` without `|| echo patch-skip;` before uvicorn — a failing/hanging patch caused `no available server`. Safe form: patch best-effort then `exec uvicorn ...`.
+- Current working Darkube startup (until image SHA is pinned): `command=/bin/sh -c` and args that download bots/config from GitHub raw then `exec uvicorn app.main:app --host 0.0.0.0 --port 8000`.
+- Verified live: `GET /api/bots/status` → `channel=bale` / `mode=multi`; `/api/bots/env-check` all true; site `/health` ok.

@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 
 export default function ManualIngestPage() {
@@ -8,6 +9,13 @@ export default function ManualIngestPage() {
   const [file, setFile] = useState(null);
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+  const [disk, setDisk] = useState(null);
+
+  useEffect(() => {
+    api("/api/sources/status")
+      .then((s) => setDisk(s?.darkube_disk || null))
+      .catch(() => {});
+  }, []);
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -20,7 +28,7 @@ export default function ManualIngestPage() {
     if (file) fd.set("file", file);
     try {
       const row = await api("/api/manual-ingest", { method: "POST", formData: fd });
-      setMsg(`ثبت شد — شناسه ${row.id}`);
+      setMsg(`ثبت شد — شناسه ${row.id}${row.storage ? ` — ذخیره در ${row.storage}` : ""}`);
       setSource("");
       setDataDate("");
       setDescription("");
@@ -33,7 +41,17 @@ export default function ManualIngestPage() {
   return (
     <form className="panel" onSubmit={onSubmit}>
       <h2>ورود دستی داده</h2>
-      <p className="meta">منبع، تاریخ، توضیح، فایل — همان API که بات بعداً صدا می‌زند</p>
+      <p className="meta">
+        فایل‌ها روی منبع «دیسک پایدار دارکوب» (UPLOAD_DIR) ذخیره می‌شوند — جایگزین سپیدار نیست.{" "}
+        <Link to="/">وضعیت منابع</Link>
+      </p>
+      {disk && (
+        <p className={`meta ${disk.ok ? "" : "error"}`}>
+          {disk.freshness_label}
+          {disk.upload_dir ? ` · ${disk.upload_dir}` : ""}
+          {disk.usage_label ? ` · ${disk.usage_label}` : ""}
+        </p>
+      )}
       <label>منبع</label>
       <input value={source} onChange={(e) => setSource(e.target.value)} required placeholder="مثلاً اکسل تیم فروش" />
       <label>تاریخ داده</label>

@@ -37,6 +37,8 @@ def main() -> int:
     tok = call("POST", "/api/auth/login", form={"username": USER, "password": PASS})["access_token"]
     sources = call("GET", "/api/sources/status", token=tok)
     assert "sepidar" in sources and "maahed_site" in sources and "bot" in sources
+    assert "darkube_disk" in sources
+    assert sources["darkube_disk"].get("kind") == "persistent_storage" or sources["darkube_disk"].get("source") == "darkube_disk"
 
     dash = call(
         "POST",

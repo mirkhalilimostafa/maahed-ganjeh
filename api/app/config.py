@@ -12,6 +12,8 @@ class Settings(BaseSettings):
     admin_password: str = "admin"
 
     database_url: str = "sqlite+aiosqlite:///./ganjeh.db"
+    # Production Darkube: /data/uploads (PVC). Local: falls back in connectors/manual_ingest.
+    upload_dir: str = "/app/uploads"
 
     sepidar_mcp_url: str = "http://62.60.162.156:8787/mcp"
     sepidar_mcp_token: str = ""

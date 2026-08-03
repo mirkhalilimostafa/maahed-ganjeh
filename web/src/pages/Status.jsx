@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
@@ -9,7 +10,19 @@ function StatusCard({ title, info }) {
       <h3>{title}</h3>
       <span className={`badge ${ok ? "ok" : "bad"}`}>{ok ? "متصل / آماده" : "ناقص یا قطع"}</span>
       <p className="freshness">{info.freshness_label || info.note || "—"}</p>
-      <p className="meta">{info.detail || JSON.stringify(info).slice(0, 180)}</p>
+      {info.mount_path && <p className="meta">مسیر مونت: {info.mount_path}</p>}
+      {info.upload_dir && <p className="meta">آپلود: {info.upload_dir}</p>}
+      {info.usage_label && <p className="meta">مصرف: {info.usage_label}</p>}
+      {typeof info.upload_file_count === "number" && (
+        <p className="meta">فایل‌های آپلود: {info.upload_file_count}</p>
+      )}
+      {info.note && info.source === "darkube_disk" && <p className="meta">{info.note}</p>}
+      {info.related?.manual_ingest && (
+        <p className="meta">
+          <Link to={info.related.manual_ingest}>ورود دستی / فایل‌های ذخیره‌شده</Link>
+        </p>
+      )}
+      <p className="meta">{info.detail || (!info.mount_path && JSON.stringify(info).slice(0, 180))}</p>
     </div>
   );
 }
@@ -28,19 +41,14 @@ export default function StatusPage() {
     <div>
       <div className="panel">
         <h2>وضعیت اتصالات</h2>
-        <p className="meta">سپیدار، سایت ماهد، بات و دسترسی داده — هر ورود پنل دوباره چک می‌شود</p>
+        <p className="meta">سپیدار، سایت ماهد، دیسک پایدار دارکوب، و بات اعلان</p>
         {error && <p className="error">{error}</p>}
-        {data?.failures?.length > 0 && (
-          <p className="error">
-            قطعی‌ها: {data.failures.map((f) => `${f.name} (${f.reason_code || f.detail})`).join(" · ")}
-          </p>
-        )}
       </div>
       <div className="status-grid status-grid-spaced">
         <StatusCard title="سپیدار" info={data?.sepidar} />
         <StatusCard title="سایت maahed.ir" info={data?.maahed_site} />
-        <StatusCard title="بات" info={data?.bot} />
-        <StatusCard title="داده" info={data?.data} />
+        <StatusCard title="دیسک پایدار دارکوب" info={data?.darkube_disk} />
+        <StatusCard title="بات (اعلان)" info={data?.bot} />
       </div>
     </div>
   );
