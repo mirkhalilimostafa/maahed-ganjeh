@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certifi
 
 COPY api/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
+# ddddocr pulls onnxruntime; needed for maahed.ir captcha without Chromium/Node.
 
 COPY api/app ./app
 COPY scripts/maahed_admin_login.js scripts/ocr_digits.js /app/scripts/

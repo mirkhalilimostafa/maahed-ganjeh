@@ -1,0 +1,19 @@
+---
+description: Login health loop for site/Sepidar/bot/data with Bale alerts
+alwaysApply: false
+---
+
+# Login health loop
+
+On each panel `/api/auth/login`, `run_login_health_loop` probes:
+
+- `maahed_site` (httpx + cookie jar `/data/maahed_admin_session.json`, OCR via ddddocr when needed)
+- `sepidar` MCP
+- bot (Bale/Telegram)
+- aggregate `data` (at least one of site/sepidar ok)
+
+If anything is down and cannot self-heal, send one Bale message to `BOT_NOTIFY_RECIPIENT` with reason_code (deduped by fingerprint). Manual trigger: `POST /api/sources/health-loop`.
+
+## Site connector note
+
+Production image has **no Node/Chromium**. Do not shell out to Playwright in the pod. Prefer cookie cache; refresh cookies from ops if OCR/pip is unavailable.
