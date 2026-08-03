@@ -6,32 +6,31 @@ from app.auth import get_current_user
 from app.config import get_settings
 from app.connectors.sepidar import SepidarConnector
 from app.connectors.site import MaahedSiteConnector
-from app.connectors.bots import get_bot_adapter
 from app.models import User
+from app.services.health_loop import collect_sources_health, run_login_health_loop
 
 router = APIRouter(prefix="/api/sources", tags=["sources"])
 
 
 @router.get("/status")
 async def sources_status(_user: Annotated[User, Depends(get_current_user)]) -> dict[str, Any]:
-    settings = get_settings()
-    sepidar = SepidarConnector(settings)
-    site = MaahedSiteConnector(settings)
-    bot = get_bot_adapter(settings)
-    bot_status = bot.status()
-    probe = getattr(bot, "probe", None)
-    if callable(probe):
-        try:
-            me = await probe()
-            if isinstance(bot_status, dict):
-                bot_status = {**bot_status, "probe": me}
-        except Exception as exc:  # noqa: BLE001
-            bot_status = {**bot_status, "probe_error": str(exc)}
+    report = await collect_sources_health(get_settings())
+    checks = report.get("checks") or {}
     return {
-        "sepidar": await sepidar.status(),
-        "maahed_site": await site.status(),
-        "bot": bot_status,
+        "sepidar": checks.get("sepidar"),
+        "maahed_site": checks.get("maahed_site"),
+        "bot": checks.get("bot"),
+        "data": checks.get("data"),
+        "ok": report.get("ok"),
+        "failures": report.get("failures") or [],
+        "checked_at": report.get("checked_at"),
     }
+
+
+@router.post("/health-loop")
+async def sources_health_loop(_user: Annotated[User, Depends(get_current_user)]) -> dict[str, Any]:
+    """اجرای دستی لوپ سلامت + اعلان بله در صورت قطعی."""
+    return await run_login_health_loop(get_settings())
 
 
 @router.get("/sepidar/sample")

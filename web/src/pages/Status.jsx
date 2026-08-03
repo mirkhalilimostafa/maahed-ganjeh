@@ -28,13 +28,19 @@ export default function StatusPage() {
     <div>
       <div className="panel">
         <h2>وضعیت اتصالات</h2>
-        <p className="meta">سپیدار، سایت ماهد، و بات</p>
+        <p className="meta">سپیدار، سایت ماهد، بات و دسترسی داده — هر ورود پنل دوباره چک می‌شود</p>
         {error && <p className="error">{error}</p>}
+        {data?.failures?.length > 0 && (
+          <p className="error">
+            قطعی‌ها: {data.failures.map((f) => `${f.name} (${f.reason_code || f.detail})`).join(" · ")}
+          </p>
+        )}
       </div>
       <div className="status-grid status-grid-spaced">
         <StatusCard title="سپیدار" info={data?.sepidar} />
         <StatusCard title="سایت maahed.ir" info={data?.maahed_site} />
         <StatusCard title="بات" info={data?.bot} />
+        <StatusCard title="داده" info={data?.data} />
       </div>
     </div>
   );
